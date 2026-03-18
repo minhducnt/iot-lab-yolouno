@@ -12,11 +12,9 @@ Arduino sketches for a 6-task IoT lab on the **YoloUNO** board (ESP32-S3). Each 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/iot-lab-yolouno.git
+git clone https://github.com/minhducnt/iot-lab-yolouno.git
 cd iot-lab-yolouno
 ```
-
-(Replace `YOUR_USERNAME` with your GitHub username and `iot-lab-yolouno` with your repo name.)
 
 ### 2. Install Arduino IDE and board support
 
