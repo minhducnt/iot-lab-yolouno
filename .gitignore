@@ -1,0 +1,23 @@
+# Arduino / ESP32 build
+build/
+*.elf
+*.bin
+*.map
+*.hex
+
+# IDE
+.idea/
+.vscode/
+*.code-workspace
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Optional: lab template (uncomment to keep it local only)
+# template-lab-report.docx
+
+# Cursor / editor
+*.swp
+*~
