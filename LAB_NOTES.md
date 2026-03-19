@@ -1,20 +1,41 @@
 # Báo cáo thực hành IoT — YoloUNO (ESP32-S3)
 
-> **Hướng dẫn:** Tài liệu này chứa toàn bộ ghi chú kỹ thuật cho từng task. Ảnh chụp sẽ được bổ sung vào các chỗ có nhãn `[📷 ẢNH]`.
+> Tài liệu ghi chú kỹ thuật cho 6 task thực hành. Ảnh minh chứng sẽ được bổ sung vào các ô `[📷 ẢNH]` sau khi thực hiện.
 
 ---
 
-## Thông tin phần cứng
+## Tổng quan dự án
 
-| Thành phần | Chi tiết |
-|-----------|---------|
-| **Board** | YoloUNO (ESP32-S3, Arduino Uno form factor) |
-| **Vi xử lý** | ESP32-S3 Dual Core 240 MHz Tensilica |
-| **Bộ nhớ** | 16 MB Flash, 8 MB PSRAM |
-| **Kết nối** | WiFi 802.11b/g/n, Bluetooth 5 / BLE |
-| **Đèn tích hợp** | LED nguồn, LED chân D13, RGB NeoPixel |
-| **Cổng Grove** | 4× Analog, 4× Digital, 4× I2C |
-| **Cổng khác** | STEMMA QT / QWIIC (I2C), 4 chân GVS Servo |
+```mermaid
+flowchart TD
+    HW([YoloUNO ESP32-S3])
+
+    HW --> T1[Task 1\nLED D13 Blinky]
+    HW --> T2[Task 2\nRGB NeoPixel]
+    HW --> T3[Task 3\nDHT20 Sensor]
+    HW --> T4[Task 4\nWeb Server]
+    HW --> T5[Task 5\nTiny ML]
+    HW --> T6[Task 6\nCore IoT]
+
+    T3 -->|"Cấp dữ liệu T/H"| T4
+    T3 -->|"Cấp dữ liệu T/H"| T6
+    T4 -->|"WiFi stack"| T6
+```
+
+---
+
+## Phần cứng — YoloUNO
+
+```mermaid
+block-beta
+    columns 3
+    CPU["ESP32-S3\n240 MHz Dual Core"]:1
+    MEM["Bộ nhớ\n16MB Flash\n8MB PSRAM"]:1
+    CONN["Kết nối\nWiFi 802.11n\nBluetooth 5 BLE"]:1
+    LED["Đèn tích hợp\nLED D13\nRGB NeoPixel"]:1
+    GROVE["Grove Ports\n4× Analog\n4× Digital\n4× I2C"]:1
+    OTHER["Cổng khác\nSTEMMA QT/QWIIC\n4× GVS Servo"]:1
+```
 
 ---
 
@@ -22,51 +43,41 @@
 
 ### Mô tả
 
-Điều khiển đèn LED tích hợp trên chân D13 của YoloUNO nhấp nháy liên tục với chu kỳ 500 ms bật — 500 ms tắt. Đây là chương trình "Hello World" của lập trình nhúng, dùng để xác nhận môi trường Arduino IDE đã được cài đặt đúng và board đang hoạt động bình thường.
+Điều khiển đèn LED tích hợp trên chân **D13** nhấp nháy liên tục với chu kỳ 500 ms bật — 500 ms tắt. Đây là chương trình "Hello World" của lập trình nhúng, xác nhận môi trường Arduino IDE đã cài đúng và board hoạt động bình thường.
 
-### Code
+### Luồng hoạt động
 
-**File:** `task_01_led_blinky/task_01_led_blinky.ino`
-
-```cpp
-#ifndef LED_BUILTIN
-#define LED_BUILTIN 13
-#endif
-
-void setup() {
-  pinMode(LED_BUILTIN, OUTPUT);
-}
-
-void loop() {
-  digitalWrite(LED_BUILTIN, HIGH);
-  delay(500);
-  digitalWrite(LED_BUILTIN, LOW);
-  delay(500);
-}
+```mermaid
+flowchart LR
+    A([Khởi động]) --> B[pinMode D13 OUTPUT]
+    B --> C{loop}
+    C --> D[Bật đèn HIGH]
+    D --> E[Chờ 500 ms]
+    E --> F[Tắt đèn LOW]
+    F --> G[Chờ 500 ms]
+    G --> C
 ```
 
-### Giải thích
+### Giải thích kỹ thuật
 
-| Dòng lệnh | Chức năng |
-|----------|----------|
-| `pinMode(LED_BUILTIN, OUTPUT)` | Khai báo chân D13 là OUTPUT để xuất tín hiệu điều khiển LED |
-| `digitalWrite(HIGH)` | Cấp điện cho LED → đèn sáng |
-| `delay(500)` | Giữ trạng thái 500 ms |
-| `digitalWrite(LOW)` | Ngắt điện cho LED → đèn tắt |
+| Thành phần | Vai trò |
+|-----------|--------|
+| `LED_BUILTIN` | Macro trỏ đến GPIO D13; dùng thay số cứng để code portable |
+| `pinMode OUTPUT` | Khai báo chân là ngõ ra số |
+| `digitalWrite HIGH/LOW` | Cấp / ngắt điện cho LED |
+| `delay(500)` | Tạo chu kỳ nhấp nháy 1 Hz (500 ms on, 500 ms off) |
 
-`LED_BUILTIN` là macro được định nghĩa sẵn trong Arduino/OhStem board package, trỏ đến chân D13. Dùng `LED_BUILTIN` thay vì giá trị số cứng giúp code portable sang board khác.
+### Cải tiến có thể áp dụng
 
-### Cải tiến / thay đổi
-
-- Thêm `#ifndef LED_BUILTIN` để đảm bảo chạy được ngay cả khi board package chưa định nghĩa macro này.
-- Có thể cải tiến thêm bằng cách thay `delay()` bằng `millis()` để không block vòng lặp chính (non-blocking blink).
+- Thay `delay()` bằng `millis()` để vòng lặp không bị block (non-blocking blink), cho phép xử lý tác vụ khác song song.
+- Thêm biến `blinkInterval` để có thể thay đổi tốc độ nhấp nháy mà không cần biên dịch lại.
 
 ### Ảnh minh chứng
 
 | Nội dung | Ảnh |
 |---------|-----|
-| Hệ thống chạy trên YoloUNO (đèn D13 đang sáng) | `[📷 ẢNH — chụp board YoloUNO khi đèn D13 nhấp nháy]` |
-| Code chạy thực tế | `[📷 ẢNH — screenshot code trong Arduino IDE / Cursor]` |
+| YoloUNO đang chạy — đèn D13 sáng | `[📷 ẢNH]` |
+| Màn hình Arduino IDE | `[📷 ẢNH]` |
 
 ---
 
@@ -74,66 +85,61 @@ void loop() {
 
 ### Mô tả
 
-Điều khiển đèn RGB NeoPixel tích hợp trên YoloUNO chuyển màu liên tục theo vòng: **Đỏ → Xanh lá → Xanh dương → Tắt**, mỗi màu duy trì 400 ms. Sử dụng thư viện **Adafruit NeoPixel** để gửi tín hiệu 1-wire WS2812.
+Điều khiển đèn **RGB NeoPixel** tích hợp (chuẩn WS2812) chuyển màu liên tục theo vòng **Đỏ → Xanh lá → Xanh dương → Tắt**, mỗi trạng thái duy trì 400 ms, sử dụng thư viện **Adafruit NeoPixel**.
 
-### Code
+### Luồng hoạt động
 
-**File:** `task_02_rgb_blinky/task_02_rgb_blinky.ino`
-
-```cpp
-#include <Adafruit_NeoPixel.h>
-
-#ifndef RGB_NEOPIXEL_PIN
-#define RGB_NEOPIXEL_PIN 48
-#endif
-#define NUM_PIXELS 1
-
-Adafruit_NeoPixel pixel(NUM_PIXELS, RGB_NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
-
-void setup() {
-  pixel.begin();
-  pixel.setBrightness(40);
-  pixel.clear();
-  pixel.show();
-}
-
-void loop() {
-  pixel.setPixelColor(0, pixel.Color(255, 0, 0));  // Red
-  pixel.show(); delay(400);
-  pixel.setPixelColor(0, pixel.Color(0, 255, 0));  // Green
-  pixel.show(); delay(400);
-  pixel.setPixelColor(0, pixel.Color(0, 0, 255));  // Blue
-  pixel.show(); delay(400);
-  pixel.clear();
-  pixel.show(); delay(400);
-}
+```mermaid
+flowchart LR
+    A([Khởi động]) --> B[begin + setBrightness 40]
+    B --> C{loop}
+    C --> D["🔴 Đỏ\n255,0,0"]
+    D --> E[show + 400ms]
+    E --> F["🟢 Xanh lá\n0,255,0"]
+    F --> G[show + 400ms]
+    G --> H["🔵 Xanh dương\n0,0,255"]
+    H --> I[show + 400ms]
+    I --> J[Tắt clear]
+    J --> K[show + 400ms]
+    K --> C
 ```
 
-### Giải thích
+### Giao tiếp NeoPixel (WS2812)
 
-| Thành phần | Chức năng |
-|-----------|----------|
-| `Adafruit_NeoPixel pixel(1, PIN, NEO_GRB)` | Khởi tạo đối tượng NeoPixel: 1 LED, chân điều khiển, định dạng màu GRB 800 kHz |
-| `pixel.begin()` | Khởi tạo chân GPIO |
-| `pixel.setBrightness(40)` | Giảm độ sáng (0–255) tránh chói và tiêu tốn điện quá mức |
-| `pixel.setPixelColor(index, color)` | Đặt màu cho LED thứ `index`; `Color(R,G,B)` tạo màu từ 3 kênh 0–255 |
-| `pixel.show()` | Gửi dữ liệu màu ra đèn thực (bắt buộc gọi sau khi đặt màu) |
-| `pixel.clear()` | Tắt tất cả LED |
+```mermaid
+sequenceDiagram
+    participant MCU as ESP32-S3
+    participant LED as NeoPixel LED
+    MCU->>LED: setPixelColor(index, R, G, B)
+    Note over MCU: Lưu màu trong buffer RAM
+    MCU->>LED: show()
+    Note over MCU,LED: Gửi chuỗi bit 800 kHz qua 1 dây
+    LED-->>LED: Hiển thị màu
+```
 
-**Lưu ý pin:** Chân NeoPixel trên board phụ thuộc vào phiên bản. Nếu đèn không sáng, thay `RGB_NEOPIXEL_PIN` thành `38`. Với module RGB ngoài kết nối vào cổng Grove Digital D3, dùng `#define RGB_NEOPIXEL_PIN 3`.
+### Giải thích kỹ thuật
 
-### Cải tiến / thay đổi
+| Thành phần | Vai trò |
+|-----------|--------|
+| `RGB_NEOPIXEL_PIN` | Chân dữ liệu 1-wire; thử pin `48` hoặc `38` (onboard), `3` cho Grove D3 |
+| `setBrightness(40)` | Giới hạn độ sáng 0–255; giá trị 40 ≈ 16% để tránh chói |
+| `setPixelColor(idx, Color(R,G,B))` | Ghi màu vào buffer; chưa hiển thị ngay |
+| `show()` | Truyền buffer ra LED qua giao thức 1-wire; bắt buộc gọi sau khi đổi màu |
+| `clear()` | Đặt tất cả LED về 0,0,0 trong buffer |
 
-- Đặt `setBrightness(40)` để bảo vệ mắt khi dùng đèn onboard.
-- Dùng `#define` cho pin để dễ thay đổi mà không cần sửa code chính.
-- Có thể nâng cấp thêm hiệu ứng fade (tăng/giảm dần) bằng cách chạy vòng lặp `for` tăng dần R/G/B.
+### Cải tiến có thể áp dụng
+
+- Thêm hiệu ứng **fade** (tăng/giảm dần từng kênh R/G/B) để chuyển màu mượt mà hơn.
+- Dùng `millis()` thay `delay()` để chạy đa nhiệm (e.g. vừa chuyển màu vừa đọc cảm biến).
+- Mở rộng sang module NeoPixel nhiều LED (thay `NUM_PIXELS`).
 
 ### Ảnh minh chứng
 
 | Nội dung | Ảnh |
 |---------|-----|
-| YoloUNO đang chạy (đèn RGB đỏ / xanh / lam) | `[📷 ẢNH — chụp 1–3 trạng thái màu khác nhau]` |
-| Screenshot code | `[📷 ẢNH — màn hình Arduino IDE]` |
+| Đèn RGB màu đỏ | `[📷 ẢNH]` |
+| Đèn RGB màu xanh lá / xanh dương | `[📷 ẢNH]` |
+| Màn hình Arduino IDE | `[📷 ẢNH]` |
 
 ---
 
@@ -141,176 +147,158 @@ void loop() {
 
 ### Mô tả
 
-Kết nối cảm biến DHT20 qua giao tiếp I2C, đọc nhiệt độ và độ ẩm mỗi 2 giây, in kết quả ra Serial Monitor. DHT20 sử dụng giao thức I2C với địa chỉ cố định **0x38**.
+Kết nối cảm biến **DHT20** qua giao tiếp **I2C** (địa chỉ `0x38`), đọc nhiệt độ và độ ẩm mỗi 2 giây, in kết quả ra Serial Monitor. Thư viện: **DHT20** của Rob Tillaart.
 
 ### Sơ đồ kết nối
 
-| Chân DHT20 | Kết nối |
-|-----------|--------|
-| VCC (1) | 3.3 V |
-| SDA (2) | SDA của YoloUNO (Grove I2C hoặc STEMMA QT) |
-| GND (3) | GND |
-| SCL (4) | SCL của YoloUNO |
-
-### Code
-
-**File:** `task_03_dht20/task_03_dht20.ino`
-
-```cpp
-#include <Wire.h>
-#include <DHT20.h>
-
-DHT20 dht;
-
-void setup() {
-  Serial.begin(115200);
-  delay(500);
-  Wire.begin();
-  if (!dht.begin()) {
-    Serial.println("DHT20 init failed — check I2C wiring (addr 0x38)");
-    while (true) { delay(1000); }
-  }
-  Serial.println("DHT20 OK — readings every 2 s");
-}
-
-void loop() {
-  int status = dht.read();
-  if (status == 0) {
-    Serial.print("Temperature: ");
-    Serial.print(dht.getTemperature(), 2);
-    Serial.print(" °C  |  Humidity: ");
-    Serial.print(dht.getHumidity(), 2);
-    Serial.println(" %RH");
-  } else {
-    Serial.print("Read error: ");
-    Serial.println(status);
-  }
-  delay(2000);
-}
+```mermaid
+flowchart LR
+    subgraph YoloUNO
+        VCC33[3.3V]
+        GND0[GND]
+        SDA_PIN[SDA]
+        SCL_PIN[SCL]
+    end
+    subgraph DHT20["DHT20 (addr 0x38)"]
+        VCC_S[VCC pin 1]
+        SDA_S[SDA pin 2]
+        GND_S[GND pin 3]
+        SCL_S[SCL pin 4]
+    end
+    VCC33 --> VCC_S
+    SDA_PIN <--> SDA_S
+    GND0 --> GND_S
+    SCL_PIN --> SCL_S
 ```
 
-### Giải thích
+### Luồng đọc dữ liệu
 
-| Hàm | Chức năng |
-|-----|---------|
-| `Wire.begin()` | Khởi tạo bus I2C |
-| `dht.begin()` | Kết nối với DHT20 tại địa chỉ 0x38; trả về `true` nếu thành công |
-| `dht.read()` | Gửi lệnh đo và chờ kết quả (~80 ms); trả về `0` nếu OK |
-| `dht.getTemperature()` | Lấy giá trị nhiệt độ đã đo (°C) |
-| `dht.getHumidity()` | Lấy giá trị độ ẩm đã đo (%RH) |
+```mermaid
+sequenceDiagram
+    participant ESP as ESP32-S3
+    participant SEN as DHT20 (0x38)
 
-**Serial output mẫu:**
+    ESP->>SEN: Wire.begin() + dht.begin()
+    SEN-->>ESP: ACK — sensor ready
+    loop Mỗi 2 giây
+        ESP->>SEN: dht.read() — trigger measurement
+        Note over SEN: Đo T và H (~80ms)
+        SEN-->>ESP: Raw data (6 bytes)
+        ESP->>ESP: getTemperature() / getHumidity()
+        ESP->>ESP: In ra Serial Monitor
+    end
 ```
-DHT20 OK — readings every 2 s
-Temperature: 26.45 °C  |  Humidity: 68.30 %RH
-Temperature: 26.47 °C  |  Humidity: 68.25 %RH
-```
 
-### Cải tiến / thay đổi
+### Giải thích kỹ thuật
 
-- Thêm xử lý lỗi: nếu `begin()` thất bại thì vòng lặp vô hạn với thông báo, không crash silent.
-- In 2 chữ số thập phân (`.2`) để kết quả dễ đọc.
-- Có thể cải tiến thêm: thêm cảnh báo khi nhiệt độ hoặc độ ẩm vượt ngưỡng.
+| Hàm | Vai trò |
+|-----|--------|
+| `Wire.begin()` | Khởi tạo bus I2C phần cứng |
+| `dht.begin()` | Xác nhận DHT20 tồn tại trên bus; trả về `true` nếu OK |
+| `dht.read()` | Gửi lệnh đo + đọc 6 byte kết quả; trả về `0` nếu thành công |
+| `dht.getTemperature()` | Trả về float nhiệt độ (°C) từ lần đo gần nhất |
+| `dht.getHumidity()` | Trả về float độ ẩm (%RH) từ lần đo gần nhất |
+
+**Đặc tính cảm biến DHT20:**
+
+| Thông số | Giá trị |
+|---------|--------|
+| Giao tiếp | I2C, địa chỉ 0x38 |
+| Điện áp | 2.2 V – 5.5 V |
+| Dải nhiệt độ | −40 °C đến +80 °C (±0.5 °C) |
+| Dải độ ẩm | 0 – 100 %RH (±3%) |
+| Thời gian đo | ~80 ms |
+
+### Cải tiến có thể áp dụng
+
+- Thêm kiểm tra ngưỡng: cảnh báo LED hoặc buzzer khi nhiệt độ > 35 °C hoặc độ ẩm > 80%.
+- Lưu lịch sử giá trị đo vào mảng để tính trung bình trượt (moving average), giảm nhiễu.
 
 ### Ảnh minh chứng
 
 | Nội dung | Ảnh |
 |---------|-----|
-| YoloUNO + DHT20 đang chạy | `[📷 ẢNH — board và cảm biến đã nối dây]` |
-| Serial Monitor hiển thị giá trị đo | `[📷 ẢNH — screenshot Serial Monitor]` |
+| YoloUNO + DHT20 đã kết nối dây | `[📷 ẢNH]` |
+| Serial Monitor hiển thị giá trị đo | `[📷 ẢNH]` |
 
 ---
 
-## Task 4: WebServer
+## Task 4: Web Server
 
 ### Mô tả
 
-YoloUNO kết nối WiFi (chế độ STA — station) và khởi chạy HTTP server trên cổng 80. Khi người dùng mở trình duyệt nhập địa chỉ IP của board, trang web trả về trạng thái thiết bị và (nếu có DHT20) nhiệt độ / độ ẩm thời gian thực, tự động làm mới mỗi 3 giây.
+YoloUNO kết nối **WiFi (STA mode)** và khởi chạy **HTTP server trên cổng 80**. Người dùng mở trình duyệt → nhập IP của board → nhận trang web hiển thị trạng thái thiết bị và số liệu cảm biến, tự động làm mới mỗi 3 giây.
 
-### Chức năng
+### Kiến trúc kết nối
 
-| Chức năng | Chi tiết |
-|----------|---------|
+```mermaid
+flowchart LR
+    PC[Trình duyệt\nPC / Điện thoại]
+    Router[WiFi Router]
+    ESP[YoloUNO\nHTTP :80]
+    DHT[DHT20\nI2C 0x38]
+
+    PC -- "HTTP GET /" --> Router
+    Router -- WiFi --> ESP
+    ESP -- "HTTP 200 HTML" --> Router
+    Router --> PC
+    DHT -- I2C --> ESP
+```
+
+### Luồng xử lý request
+
+```mermaid
+sequenceDiagram
+    participant BR as Trình duyệt
+    participant ESP as YoloUNO
+
+    BR->>ESP: GET / HTTP/1.1
+    ESP->>ESP: Đọc DHT20 (nếu USE_DHT20=1)
+    ESP->>ESP: buildPage() — tạo HTML động
+    ESP-->>BR: HTTP 200 text/html
+    Note over BR: Hiển thị trang\nAuto-refresh sau 3 s
+    BR->>ESP: GET / (tự động làm mới)
+```
+
+### Giao diện web (mô phỏng)
+
+```
+┌──────────────────────────────────┐
+│        YoloUNO WebServer         │
+├──────────────────────────────────┤
+│  Status    :  online             │
+│  IP        :  192.168.x.xxx      │
+│  ──────────────────────────────  │
+│  Temperature :  26.45 °C        │
+│  Humidity    :  68.30 %RH       │
+├──────────────────────────────────┤
+│  ⟳ Tự động làm mới sau 3 giây   │
+└──────────────────────────────────┘
+```
+
+### Chức năng chi tiết
+
+| Chức năng | Mô tả |
+|----------|------|
 | WiFi STA | Kết nối vào router/hotspot bằng SSID + password |
-| HTTP GET `/` | Trả về trang HTML với trạng thái, địa chỉ IP, và số liệu cảm biến |
-| Auto-refresh | `<meta http-equiv='refresh' content='3'>` làm mới trang mỗi 3 giây |
-| DHT20 tùy chọn | `#define USE_DHT20 1/0` bật/tắt đọc cảm biến |
+| HTTP GET `/` | Trả về trang HTML đầy đủ với dữ liệu thực |
+| Auto-refresh | Meta tag `refresh=3` làm mới trang mỗi 3 giây |
+| DHT20 tùy chọn | `USE_DHT20 = 1/0` bật/tắt đọc cảm biến |
+| Xử lý lỗi sensor | Nếu DHT20 lỗi, trang vẫn hiển thị với thông báo lỗi |
 
-### Giao diện web
+### Cải tiến có thể áp dụng
 
-```
-┌─────────────────────────────┐
-│      YoloUNO WebServer      │
-│  Status: online             │
-│  IP: 192.168.x.xxx          │
-│  Temperature: 26.45 °C      │
-│  Humidity:    68.30 %RH     │
-│                             │
-│  [Page auto-refreshes 3 s]  │
-└─────────────────────────────┘
-```
-
-### Cấu hình
-
-Trước khi nạp code, sửa trong file `.ino`:
-
-```cpp
-const char *WIFI_SSID     = "TEN_WIFI_CUA_BAN";
-const char *WIFI_PASSWORD = "MAT_KHAU_WIFI";
-#define USE_DHT20 1   // 0 nếu không có cảm biến
-```
-
-### Code (tóm tắt)
-
-**File:** `task_04_webserver/task_04_webserver.ino`
-
-```cpp
-#include <WiFi.h>
-#include <WebServer.h>
-
-WebServer server(80);
-
-void handleRoot() {
-  server.send(200, "text/html", buildPage());
-}
-
-void setup() {
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  while (WiFi.status() != WL_CONNECTED) { delay(500); }
-  server.on("/", handleRoot);
-  server.begin();
-}
-
-void loop() {
-  server.handleClient();
-}
-```
-
-`buildPage()` xây dựng chuỗi HTML động, nhúng địa chỉ IP và giá trị cảm biến thực tế.
-
-### Giải thích
-
-| Thành phần | Chức năng |
-|-----------|---------|
-| `WebServer server(80)` | Khởi tạo HTTP server lắng nghe cổng 80 |
-| `WiFi.begin(...)` | Kết nối WiFi theo chế độ station |
-| `server.on("/", callback)` | Đăng ký handler cho đường dẫn `/` |
-| `server.handleClient()` | Xử lý request đến (phải gọi liên tục trong `loop()`) |
-| `server.send(200, "text/html", html)` | Trả về HTTP 200 với nội dung HTML |
-
-### Cải tiến / thay đổi
-
-- Sử dụng `WebServer` (built-in ESP32) thay vì `WiFiServer` cấp thấp để đơn giản hóa xử lý HTTP.
-- Thêm `meta refresh` cho phép giám sát liên tục không cần F5.
-- Chia `buildPage()` thành hàm riêng để dễ mở rộng thêm trang (e.g. `/sensor`, `/status`).
+- Sử dụng **AsyncWebServer** thay WebServer blocking để xử lý nhiều client đồng thời.
+- Thêm route `/api/sensor` trả về JSON (REST API) cho frontend hiện đại.
+- Thêm nút điều khiển LED ngay trên trang web (kết hợp với Task 1/2).
 
 ### Ảnh minh chứng
 
 | Nội dung | Ảnh |
 |---------|-----|
-| Giao diện web trên trình duyệt | `[📷 ẢNH — screenshot trang web hiển thị trong Chrome/Firefox]` |
-| Serial Monitor hiển thị địa chỉ IP | `[📷 ẢNH — screenshot Serial Monitor sau khi kết nối WiFi]` |
-| YoloUNO đang chạy | `[📷 ẢNH — board thực tế]` |
+| Trang web trên trình duyệt (có dữ liệu T/H) | `[📷 ẢNH]` |
+| Serial Monitor sau khi kết nối WiFi (hiển thị IP) | `[📷 ẢNH]` |
+| Board YoloUNO đang chạy | `[📷 ẢNH]` |
 
 ---
 
@@ -318,96 +306,97 @@ void loop() {
 
 ### Mô tả
 
-Chạy mô hình machine learning nhỏ (TensorFlow Lite Micro) trực tiếp trên chip ESP32-S3, **không cần server/cloud**. Mô hình demo: phân loại hoa Iris (4 đặc trưng đầu vào → 3 lớp) với kích thước ~5 KB. Kết quả được in ra Serial Monitor và D13 LED nhấp theo số lần bằng class được dự đoán.
+Chạy mô hình **Machine Learning nhỏ (TensorFlow Lite Micro)** trực tiếp trên chip ESP32-S3 — hoàn toàn **offline, không cần cloud**. Demo: phân loại hoa **Iris** (4 đặc trưng đầu vào → 3 class) với mô hình ~5 KB. Kết quả in ra Serial và đèn D13 nhấp theo số class.
 
-### Chức năng
+### Kiến trúc TinyML trên thiết bị
 
-| Chức năng | Chi tiết |
-|----------|---------|
-| Load model | Load file `irisModel.h` (TFLite FlatBuffer) vào bộ nhớ |
-| Inference | Dự đoán lớp của 3 mẫu dữ liệu Iris (x0, x1, x2) |
-| Serial output | In class dự đoán + thời gian inference (microseconds) |
-| LED feedback | D13 nhấp N lần = class N (class 0 → 1 lần, class 1 → 2 lần, ...) |
+```mermaid
+flowchart TD
+    MODEL["irisModel.h\nTFLite FlatBuffer ~5KB\nnhúng trong Flash"]
+    ARENA["Tensor Arena\n8KB PSRAM / SRAM"]
+    INFER["TFLite Micro Interpreter\nEloquentTinyML + tflm_esp32"]
+    INPUT["Input tensor\n4 float features\nsepal/petal length&width"]
+    OUTPUT["Output tensor\n3 float softmax scores"]
+    CLASS["Classification\nargmax → class 0/1/2"]
+    LED["D13 LED\nblink × class"]
+    SER["Serial Monitor\nclass + inference time"]
 
-### Thư viện cần cài
-
-1. **EloquentTinyML** — từ Library Manager (tác giả: eloquentarduino)
-2. **tflm_esp32** — TensorFlow Lite Micro runtime cho ESP32
-
-### Code (tóm tắt)
-
-**File:** `task_05_tiny_ml/task_05_tiny_ml.ino`
-
-```cpp
-#include "irisModel.h"
-#include <tflm_esp32.h>
-#include <eloquent_tinyml.h>
-
-#define ARENA_SIZE 8000
-Eloquent::TF::Sequential<TF_NUM_OPS, ARENA_SIZE> tf;
-
-void setup() {
-  tf.setNumInputs(4);
-  tf.setNumOutputs(3);
-  tf.resolver.AddFullyConnected();
-  tf.resolver.AddSoftmax();
-  tf.begin(irisModel);
-}
-
-void loop() {
-  tf.predict(x0);
-  Serial.print("Sample 0 -> class ");
-  Serial.print(tf.classification);
-  Serial.print(" in ");
-  Serial.print(tf.benchmark.microseconds());
-  Serial.println(" us");
-  // ... predict x1, x2
-  delay(2000);
-}
+    MODEL --> INFER
+    ARENA --> INFER
+    INPUT --> INFER
+    INFER --> OUTPUT
+    OUTPUT --> CLASS
+    CLASS --> LED
+    CLASS --> SER
 ```
 
-### Giải thích
+### Mô hình Iris — kiến trúc mạng
 
-| Thành phần | Chức năng |
-|-----------|---------|
-| `irisModel.h` | Mô hình TFLite ở dạng `unsigned char[]`, tổng ~5 KB |
-| `ARENA_SIZE 8000` | Bộ nhớ tĩnh cấp phát cho tensor arena (~8 KB) |
-| `tf.begin(irisModel)` | Khởi tạo interpreter TFLite, parse model |
-| `tf.predict(x)` | Chạy inference với mảng float 4 phần tử |
-| `tf.classification` | Index của class có xác suất cao nhất |
-| `tf.benchmark.microseconds()` | Thời gian chạy inference |
-
-**Output mẫu trên Serial:**
+```mermaid
+flowchart LR
+    subgraph input [Input]
+        I1[sepal length]
+        I2[sepal width]
+        I3[petal length]
+        I4[petal width]
+    end
+    subgraph hidden1 [Dense 1 ReLU]
+        H1[32 neurons]
+    end
+    subgraph hidden2 [Dense 2 ReLU]
+        H2[16 neurons]
+    end
+    subgraph output [Output Softmax]
+        O1[setosa]
+        O2[versicolor]
+        O3[virginica]
+    end
+    input --> hidden1 --> hidden2 --> output
 ```
-=== Task 5: Tiny ML (Iris TFLite) ===
-Model loaded. Predicting x0, x1, x2 each second...
-Sample 0 -> class 0  (8450 us)
-Sample 1 -> class 1
-Sample 2 -> class 2
+
+### Ý nghĩa class
+
+| Class | Loài hoa | Đặc điểm nhận dạng |
+|-------|---------|-------------------|
+| 0 | *Iris setosa* | Cánh hoa nhỏ, đài hoa rộng |
+| 1 | *Iris versicolor* | Kích thước trung bình |
+| 2 | *Iris virginica* | Cánh hoa lớn nhất |
+
+### Phản hồi kết quả
+
+```mermaid
+flowchart LR
+    PRED[Kết quả dự đoán]
+    PRED -->|class 0| B0[D13 nhấp 1 lần]
+    PRED -->|class 1| B1[D13 nhấp 2 lần]
+    PRED -->|class 2| B2[D13 nhấp 3 lần]
+    PRED --> SER[Serial: class + thời gian μs]
 ```
 
-**Ý nghĩa class Iris:**
-- Class 0: Iris setosa
-- Class 1: Iris versicolor
-- Class 2: Iris virginica
+### Thông số kỹ thuật
 
-### Về mô hình
+| Tham số | Giá trị |
+|--------|--------|
+| Input | 4 float (sepal/petal length & width, đã chuẩn hóa 0–1) |
+| Output | 3 float (softmax xác suất) |
+| Model size | ~5 KB (FlatBuffer) |
+| Tensor arena | 8 KB |
+| Inference time | ~8,000–10,000 μs (~8–10 ms) trên ESP32-S3 |
+| Thư viện | EloquentTinyML + tflm_esp32 |
 
-Mô hình Iris là mạng fully-connected 3 lớp được huấn luyện bằng Keras/TensorFlow, sau đó convert sang TFLite và export dưới dạng C header bằng công cụ [everywhereml](https://github.com/eloquentarduino/everywhereml). Trọng số (~5 KB) được nhúng trực tiếp vào flash.
+### Cải tiến có thể áp dụng
 
-### Cải tiến / thay đổi
-
-- `ARENA_SIZE` được tăng lên 8000 (so với 2000 mặc định trong ví dụ) để đảm bảo đủ bộ nhớ trên ESP32-S3.
-- Thêm hàm `blinkClass()` để phản hồi kết quả inference qua đèn LED vật lý.
-- Có thể mở rộng sau: thay `irisModel.h` bằng mô hình từ Edge Impulse (e.g. phân loại cử chỉ, nhận dạng âm thanh).
+- Tăng `ARENA_SIZE` nếu gặp lỗi "AllocateTensors failed" với mô hình phức tạp hơn.
+- Thay `irisModel.h` bằng mô hình từ **Edge Impulse** (phân loại cử chỉ, nhận dạng âm thanh từ microphone).
+- Thêm RGB NeoPixel phản hồi màu theo class (đỏ / xanh / lam thay vì nhấp LED).
 
 ### Ảnh minh chứng
 
 | Nội dung | Ảnh |
 |---------|-----|
-| Serial Monitor hiển thị kết quả inference | `[📷 ẢNH — screenshot Serial Monitor với các dòng "Sample X -> class Y"]` |
-| D13 LED nhấp nháy | `[📷 ẢNH — board đang chạy, đèn D13 sáng]` |
-| Screenshot code | `[📷 ẢNH — code trong Arduino IDE]` |
+| Serial Monitor — kết quả inference (class + time) | `[📷 ẢNH]` |
+| D13 LED nhấp nháy phản hồi class | `[📷 ẢNH]` |
+| Board YoloUNO đang chạy | `[📷 ẢNH]` |
 
 ---
 
@@ -415,141 +404,143 @@ Mô hình Iris là mạng fully-connected 3 lớp được huấn luyện bằng
 
 ### Mô tả
 
-Kết nối YoloUNO tới nền tảng **Core IoT** ([coreiot.io](https://coreiot.io)) qua giao thức MQTT. Board:
-- Gửi **telemetry** (nhiệt độ, độ ẩm) lên dashboard mỗi 5 giây.
-- Nhận **lệnh từ dashboard** qua RPC để bật/tắt đèn D13 và điều chỉnh độ sáng.
-- Đồng bộ **trạng thái** qua shared attributes.
+Kết nối YoloUNO tới nền tảng **Core IoT** ([coreiot.io](https://coreiot.io)) qua giao thức **MQTT**. Board gửi dữ liệu cảm biến lên cloud, đồng thời nhận lệnh điều khiển từ Dashboard.
 
-### Kiến trúc
+### Kiến trúc hệ thống
 
-```
-YoloUNO ──(WiFi)──► app.coreiot.io:1883 (MQTT)
-    │                        │
-    │  telemetry (T, H)       │
-    │──────────────────────► Dashboard (biểu đồ)
-    │                        │
-    │◄────────────────────── RPC: setLedState(true/false)
-    │  shared attr: led_brightness
-```
+```mermaid
+flowchart LR
+    subgraph device [YoloUNO]
+        DHT20_D[DHT20\nI2C]
+        LED_D[LED D13]
+        ESP_D[ESP32-S3\nMQTT Client]
+        DHT20_D -- T°, H% --> ESP_D
+        ESP_D -- bật/tắt --> LED_D
+    end
 
-### Chuẩn bị trên CoreIoT
+    subgraph cloud [Core IoT Cloud]
+        MQTT[MQTT Broker\napp.coreiot.io:1883]
+        DB[(Time-series DB)]
+        DASH[Dashboard]
+        MQTT --> DB --> DASH
+    end
 
-1. Đăng ký tại [coreiot.io](https://coreiot.io)
-2. Tạo thiết bị mới → sao chép **Access Token**
-3. Tạo Dashboard với widget:
-   - **Value card**: hiển thị `temperature`, `humidity`
-   - **Line chart**: vẽ lịch sử nhiệt độ
-   - **Button RPC**: gọi `setLedState` với `true`/`false`
-4. Thêm widget **Shared attribute control** cho `led_brightness`
-
-### Cấu hình code
-
-```cpp
-constexpr char WIFI_SSID[]     = "TEN_WIFI_CUA_BAN";
-constexpr char WIFI_PASSWORD[] = "MAT_KHAU_WIFI";
-constexpr char TOKEN[]         = "ACCESS_TOKEN_TU_COREIOT";
+    ESP_D -- "Telemetry\ntemperature, humidity" --> MQTT
+    DASH -- "RPC: setLedState\nShared attr: led_brightness" --> MQTT
+    MQTT -- "RPC + Attributes" --> ESP_D
 ```
 
-### Code (tóm tắt)
+### Luồng dữ liệu đầy đủ
 
-**File:** `task_06_core_iot/task_06_core_iot.ino`
+```mermaid
+sequenceDiagram
+    participant DHT as DHT20
+    participant ESP as YoloUNO
+    participant MQTT as Core IoT MQTT
+    participant DASH as Dashboard
 
-```cpp
-// Kết nối MQTT
-tb.connect(COREIOT_SERVER, TOKEN, COREIOT_PORT);
+    ESP->>MQTT: connect(server, token, 1883)
+    MQTT-->>ESP: Connected
+    ESP->>MQTT: subscribe RPC + shared attributes
+    ESP->>MQTT: sendAttributeData(ip, mac, ssid)
 
-// Gửi telemetry mỗi 5 giây
-tb.sendTelemetryData("temperature", temperature);
-tb.sendTelemetryData("humidity", humidity);
+    loop Mỗi 5 giây
+        ESP->>DHT: dht.read()
+        DHT-->>ESP: T=26.5°C, H=68%
+        ESP->>MQTT: sendTelemetryData(temperature, humidity)
+        MQTT->>DASH: Cập nhật biểu đồ
+    end
 
-// Xử lý RPC từ dashboard
-void processSetLedState(const JsonVariantConst &data, JsonDocument &response) {
-  ledState = data.as<bool>();
-  analogWrite(LED_BUILTIN, ledState ? ledBrightness : 0);
-}
+    DASH->>MQTT: RPC setLedState(true)
+    MQTT->>ESP: processSetLedState callback
+    ESP->>ESP: analogWrite D13 ON
+    ESP->>MQTT: sendAttributeData(led_state=true)
+
+    DASH->>MQTT: Shared attr led_brightness=128
+    MQTT->>ESP: processSharedAttributes callback
+    ESP->>ESP: analogWrite D13 brightness=128
 ```
 
-### Giải thích các thành phần
+### Dữ liệu trao đổi
 
-| Thành phần | Chức năng |
-|-----------|---------|
-| `ThingsBoard tb(...)` | Client MQTT tương thích ThingsBoard/CoreIoT |
-| `tb.connect(server, token, port)` | Kết nối MQTT với access token làm username |
-| `tb.sendTelemetryData(key, value)` | Gửi 1 cặp key-value lên stream telemetry |
-| `tb.sendAttributeData(key, value)` | Cập nhật thuộc tính thiết bị (metadata) |
-| `RPC_Subscribe(callbacks)` | Đăng ký lắng nghe lệnh RPC từ dashboard |
-| `Shared_Attributes_Subscribe(cb)` | Nhận cập nhật shared attribute (e.g. độ sáng) |
-| `tb.loop()` | Xử lý tin nhắn đến (phải gọi liên tục) |
+| Tên | Loại | Hướng | Ý nghĩa |
+|-----|------|-------|--------|
+| `temperature` | Telemetry | Board → Cloud | Nhiệt độ (°C) |
+| `humidity` | Telemetry | Board → Cloud | Độ ẩm (%RH) |
+| `rssi` | Attribute | Board → Cloud | Cường độ tín hiệu WiFi (dBm) |
+| `ip_address` | Attribute | Board → Cloud | Địa chỉ IP hiện tại |
+| `mac_address` | Attribute | Board → Cloud | Địa chỉ MAC |
+| `led_state` | Client attr | Hai chiều | Trạng thái đèn (bool) |
+| `led_brightness` | Shared attr | Cloud → Board | Độ sáng đèn (0–255) |
 
-**Serial output mẫu:**
+### Các bước thiết lập CoreIoT
+
+```mermaid
+flowchart TD
+    A([Bắt đầu]) --> B[Đăng ký tài khoản\ncoreiot.io]
+    B --> C[Tạo thiết bị mới\nDevice Management]
+    C --> D[Sao chép Access Token]
+    D --> E[Dán TOKEN vào code\nconstexpr char TOKEN]
+    E --> F[Tạo Dashboard]
+    F --> G[Thêm widget Value Card\ntemperature, humidity]
+    G --> H[Thêm widget Line Chart\nlịch sử nhiệt độ]
+    H --> I[Thêm nút RPC\nsetLedState true/false]
+    I --> J[Thêm Shared Attr\nled_brightness slider]
+    J --> K([Upload code & chạy])
 ```
-WiFi connected
-MQTT connect app.coreiot.io ... Connected to Core IoT
-DHT20 OK
-Telemetry: T=26.5 H=68.3
-Telemetry: T=26.6 H=68.1
-RPC setLedState -> ON
-led_brightness = 128
-```
 
-### Thuộc tính đồng bộ
+### Cải tiến có thể áp dụng
 
-| Tên | Loại | Hướng | Chức năng |
-|-----|------|-------|----------|
-| `temperature` | Telemetry | Board → Server | Nhiệt độ (°C) |
-| `humidity` | Telemetry | Board → Server | Độ ẩm (%RH) |
-| `rssi` | Attribute | Board → Server | Cường độ WiFi |
-| `ip_address` | Attribute | Board → Server | Địa chỉ IP hiện tại |
-| `led_state` | Client attribute | Hai chiều | Trạng thái đèn bật/tắt |
-| `led_brightness` | Shared attribute | Server → Board | Độ sáng đèn (0–255) |
-
-### Cải tiến / thay đổi
-
-- Telemetry dùng DHT20 thực tế (khi `USE_DHT20 1`); fallback về giá trị ngẫu nhiên nếu cảm biến không kết nối.
-- Xử lý tái kết nối WiFi và MQTT tự động khi mất kết nối.
-- Gửi thêm `rssi`, `mac_address`, `ssid` làm attribute để giám sát tình trạng mạng trên dashboard.
+- Thêm **cảnh báo (Alert)** trên CoreIoT khi nhiệt độ vượt ngưỡng (Rule Engine).
+- Gửi thêm dữ liệu `uptime` (thời gian hoạt động) để giám sát độ ổn định.
+- Mã hóa kết nối bằng **MQTT over TLS (port 8883)** cho môi trường production.
 
 ### Ảnh minh chứng
 
 | Nội dung | Ảnh |
 |---------|-----|
-| Dashboard CoreIoT (biểu đồ nhiệt độ, độ ẩm) | `[📷 ẢNH — screenshot trang dashboard trên coreiot.io]` |
-| YoloUNO kết nối server và nhận lệnh | `[📷 ẢNH — board thực tế + Serial Monitor hiển thị "Connected" và "RPC received"]` |
+| Dashboard CoreIoT — biểu đồ nhiệt độ & độ ẩm | `[📷 ẢNH]` |
+| Nút RPC bật/tắt đèn trên Dashboard | `[📷 ẢNH]` |
+| YoloUNO kết nối server + Serial Monitor "Connected" | `[📷 ẢNH]` |
+| Board nhận lệnh RPC — đèn D13 bật/tắt | `[📷 ẢNH]` |
 
 ---
 
 ## GitSource
 
-| Mục | Thông tin |
-|-----|---------|
-| **Repository** | https://github.com/minhducnt/iot-lab-yolouno |
+| Thông tin | Chi tiết |
+|----------|---------|
+| **Repository** | [github.com/minhducnt/iot-lab-yolouno](https://github.com/minhducnt/iot-lab-yolouno) |
 | **Branch** | `main` |
-| **Ngôn ngữ** | C++ (Arduino / PlatformIO) |
+| **Ngôn ngữ** | C++ (Arduino IDE / ESP32 core) |
 
-**Cấu trúc thư mục:**
-```
-iot-lab-yolouno/
-├── README.md               ← Hướng dẫn cài đặt & chạy
-├── REQUIREMENTS.md         ← Yêu cầu & deliverables
-├── LAB_NOTES.md            ← Tài liệu này
-├── task_01_led_blinky/
-├── task_02_rgb_blinky/
-├── task_03_dht20/
-├── task_04_webserver/
-├── task_05_tiny_ml/
-└── task_06_core_iot/
+### Cấu trúc repository
+
+```mermaid
+flowchart TD
+    ROOT[iot-lab-yolouno/]
+    ROOT --> RM[README.md\nHướng dẫn cài đặt]
+    ROOT --> REQ[REQUIREMENTS.md\nDeliverables]
+    ROOT --> LN[LAB_NOTES.md\nBáo cáo này]
+    ROOT --> T1D[task_01_led_blinky/]
+    ROOT --> T2D[task_02_rgb_blinky/]
+    ROOT --> T3D[task_03_dht20/]
+    ROOT --> T4D[task_04_webserver/]
+    ROOT --> T5D[task_05_tiny_ml/]
+    ROOT --> T6D[task_06_core_iot/]
+    T5D --> IRISMODEL[irisModel.h\nTFLite model]
 ```
 
 ---
 
-## Tóm tắt thư viện sử dụng
+## Tóm tắt thư viện
 
-| Thư viện | Phiên bản | Cài đặt | Task |
-|---------|----------|--------|------|
-| Arduino / ESP32 core | ≥ 2.0 | Boards Manager | Tất cả |
-| **Adafruit NeoPixel** | ≥ 1.11 | Library Manager | 2 |
-| **DHT20** (Rob Tillaart) | ≥ 0.3.2 | Library Manager | 3, 4, 6 |
-| **WebServer** (built-in) | — | Đã có trong ESP32 core | 4 |
-| **EloquentTinyML** | ≥ 2.x | Library Manager | 5 |
-| **tflm_esp32** | matching version | Library Manager | 5 |
-| **Core IoT – ThingsBoard** | ≥ 4.x | OhStem board pkg / ZIP | 6 |
+| Thư viện | Nguồn cài | Task |
+|---------|----------|------|
+| ESP32 / OhStem core | Boards Manager | Tất cả |
+| **Adafruit NeoPixel** ≥ 1.11 | Library Manager | 2 |
+| **DHT20** — Rob Tillaart ≥ 0.3.2 | Library Manager | 3, 4, 6 |
+| **WebServer** (built-in) | ESP32 core | 4 |
+| **EloquentTinyML** | Library Manager | 5 |
+| **tflm_esp32** | Library Manager | 5 |
+| **Core IoT – ThingsBoard** ≥ 4.x | OhStem board pkg / ZIP | 6 |
