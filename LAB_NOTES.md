@@ -90,17 +90,22 @@ flowchart LR
 ### Luồng hoạt động
 
 ```mermaid
-flowchart LR
-    A([Khởi động]) --> B[begin + setBrightness 40]
-    B --> C{loop}
-    C --> D["🔴 Đỏ\n255,0,0"]
-    D --> E[show + 400ms]
-    E --> F["🟢 Xanh lá\n0,255,0"]
-    F --> G[show + 400ms]
-    G --> H["🔵 Xanh dương\n0,0,255"]
-    H --> I[show + 400ms]
-    I --> J[Tắt clear]
-    J --> K[show + 400ms]
+flowchart TD
+    A([Khởi động]) --> B[Khởi tạo NeoPixel\nĐộ sáng 40 / 255]
+    B --> C{Lặp vô hạn}
+
+    C --> D[Đặt màu DO -- R 255 G 0 B 0]
+    D --> E[Hiển thị -- chờ 400 ms]
+
+    E --> F[Đặt màu XANH LA -- R 0 G 255 B 0]
+    F --> G[Hiển thị -- chờ 400 ms]
+
+    G --> H[Đặt màu XANH DUONG -- R 0 G 0 B 255]
+    H --> I[Hiển thị -- chờ 400 ms]
+
+    I --> J[Tắt đèn -- clear]
+    J --> K[Hiển thị -- chờ 400 ms]
+
     K --> C
 ```
 
