@@ -317,46 +317,66 @@ Chạy mô hình **Machine Learning nhỏ (TensorFlow Lite Micro)** trực tiế
 
 ```mermaid
 flowchart TD
-    MODEL["irisModel.h\nTFLite FlatBuffer ~5KB\nnhúng trong Flash"]
-    ARENA["Tensor Arena\n8KB PSRAM / SRAM"]
-    INFER["TFLite Micro Interpreter\nEloquentTinyML + tflm_esp32"]
-    INPUT["Input tensor\n4 float features\nsepal/petal length&width"]
-    OUTPUT["Output tensor\n3 float softmax scores"]
-    CLASS["Classification\nargmax → class 0/1/2"]
-    LED["D13 LED\nblink × class"]
-    SER["Serial Monitor\nclass + inference time"]
+    subgraph flash [Flash Storage]
+        MODEL[irisModel.h -- TFLite FlatBuffer 5 KB]
+    end
+
+    subgraph runtime [TFLite Micro Runtime]
+        ARENA[Tensor Arena -- 8 KB]
+        INFER[EloquentTinyML Interpreter]
+    end
+
+    subgraph input [Dau vao]
+        IN[4 gia tri float -- sepal and petal length and width]
+    end
+
+    subgraph output [Dau ra]
+        SCORES[3 xac suat Softmax]
+        ARGMAX[argmax -- Class thang]
+    end
+
+    subgraph feedback [Phan hoi nguoi dung]
+        LED[D13 LED -- nhap theo class]
+        SER[Serial Monitor -- class va thoi gian]
+    end
 
     MODEL --> INFER
     ARENA --> INFER
-    INPUT --> INFER
-    INFER --> OUTPUT
-    OUTPUT --> CLASS
-    CLASS --> LED
-    CLASS --> SER
+    IN --> INFER
+    INFER --> SCORES
+    SCORES --> ARGMAX
+    ARGMAX --> LED
+    ARGMAX --> SER
 ```
 
 ### Mô hình Iris — kiến trúc mạng
 
 ```mermaid
 flowchart LR
-    subgraph input [Input]
-        I1[sepal length]
-        I2[sepal width]
-        I3[petal length]
-        I4[petal width]
+    subgraph IN [Dau vao -- 4 features]
+        direction TB
+        I1([Sepal Length])
+        I2([Sepal Width])
+        I3([Petal Length])
+        I4([Petal Width])
     end
-    subgraph hidden1 [Dense 1 ReLU]
-        H1[32 neurons]
+
+    subgraph D1 [Lop an 1 -- Dense ReLU]
+        H1(["32 neurons"])
     end
-    subgraph hidden2 [Dense 2 ReLU]
-        H2[16 neurons]
+
+    subgraph D2 [Lop an 2 -- Dense ReLU]
+        H2(["16 neurons"])
     end
-    subgraph output [Output Softmax]
-        O1[setosa]
-        O2[versicolor]
-        O3[virginica]
+
+    subgraph OUT [Dau ra -- Softmax]
+        direction TB
+        O1([Class 0 -- Iris setosa])
+        O2([Class 1 -- Iris versicolor])
+        O3([Class 2 -- Iris virginica])
     end
-    input --> hidden1 --> hidden2 --> output
+
+    IN --> D1 --> D2 --> OUT
 ```
 
 ### Ý nghĩa class
@@ -370,12 +390,17 @@ flowchart LR
 ### Phản hồi kết quả
 
 ```mermaid
-flowchart LR
-    PRED[Kết quả dự đoán]
-    PRED -->|class 0| B0[D13 nhấp 1 lần]
-    PRED -->|class 1| B1[D13 nhấp 2 lần]
-    PRED -->|class 2| B2[D13 nhấp 3 lần]
-    PRED --> SER[Serial: class + thời gian μs]
+flowchart TD
+    INFER([Ket qua Inference])
+
+    INFER --> C0[Class 0 -- Iris setosa]
+    INFER --> C1[Class 1 -- Iris versicolor]
+    INFER --> C2[Class 2 -- Iris virginica]
+    INFER --> LOG[Serial Monitor -- in class va thoi gian us]
+
+    C0 --> L0[D13 nhap 1 lan]
+    C1 --> L1[D13 nhap 2 lan]
+    C2 --> L2[D13 nhap 3 lan]
 ```
 
 ### Thông số kỹ thuật
