@@ -353,30 +353,28 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    subgraph IN [Dau vao -- 4 features]
-        direction TB
-        I1([Sepal Length])
-        I2([Sepal Width])
-        I3([Petal Length])
-        I4([Petal Width])
-    end
+    I1([Sepal Length])
+    I2([Sepal Width])
+    I3([Petal Length])
+    I4([Petal Width])
 
-    subgraph D1 [Lop an 1 -- Dense ReLU]
-        H1(["32 neurons"])
-    end
+    D1["Dense 32 -- ReLU"]
+    D2["Dense 16 -- ReLU"]
 
-    subgraph D2 [Lop an 2 -- Dense ReLU]
-        H2(["16 neurons"])
-    end
+    O1([Class 0 -- Iris setosa])
+    O2([Class 1 -- Iris versicolor])
+    O3([Class 2 -- Iris virginica])
 
-    subgraph OUT [Dau ra -- Softmax]
-        direction TB
-        O1([Class 0 -- Iris setosa])
-        O2([Class 1 -- Iris versicolor])
-        O3([Class 2 -- Iris virginica])
-    end
+    I1 --> D1
+    I2 --> D1
+    I3 --> D1
+    I4 --> D1
 
-    IN --> D1 --> D2 --> OUT
+    D1 --> D2
+
+    D2 --> O1
+    D2 --> O2
+    D2 --> O3
 ```
 
 ### Ý nghĩa class
